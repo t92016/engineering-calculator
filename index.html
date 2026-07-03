@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>多功能工程計算機</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', 'Noto Sans TC', sans-serif;
+  background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+.calculator {
+  background: #1a1a2e;
+  border-radius: 20px;
+  padding: 25px;
+  width: 420px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.display {
+  background: #16213e;
+  border-radius: 15px;
+  padding: 20px;
+  margin-bottom: 20px;
+  min-height: 120px;
+}
+.history-display {
+  text-align: right;
+  font-size: 14px;
+  color: #888;
+  min-height: 20px;
+  word-wrap: break-word;
+}
+.input-display {
+  text-align: right;
+  font-size: 36px;
+  color: #fff;
+  font-weight: 300;
+  min-height: 50px;
+  word-wrap: break-word;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+.result-display {
+  text-align: right;
+  font-size: 28px;
+  color: #00d2ff;
+  min-height: 35px;
+  word-wrap: break-word;
+}
+.mode-indicator {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+  font-size: 12px;
+}
+.mode-indicator span {
+  color: #666;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: #0f3460;
+}
+.mode-indicator .active {
+  color: #00d2ff;
+  background: #1a3a6a;
+}
+.buttons {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+}
+button {
+  padding: 15px 0;
+  font-size: 18px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-weight: 500;
+}
+button:active { transform: scale(0.92); }
+.btn-func {
+  background: #0f3460;
+  color: #00d2ff;
+}
+.btn-func:hover { background: #1a4a80; }
+.btn-op {
+  background: #e94560;
+  color: #fff;
+}
+.btn-op:hover { background: #ff5a75; }
+.btn-num {
+  background: #16213e;
+  color: #fff;
+}
+.btn-num:hover { background: #1f2f55; }
+.btn-eq {
+  background: #00d2ff;
+  color: #1a1a2e;
+}
+.btn-eq:hover { background: #33ddff; }
+.btn-clear {
+  background: #533483;
+  color: #fff;
+}
+.btn-clear:hover { background: #6a42a0; }
+.btn-memory {
+  background: #2d4059;
+  color: #aaa;
+  font-size: 14px;
+}
+.btn-memory:hover { background: #3a5070; }
+.btn-2col { grid-column: span 2; }
+.btn-3col { grid-column: span 3; }
+.angle-badge {
+  font-size: 11px;
+  color: #00d2ff;
+  margin-left: 5px;
+}
+</style>
+</head>
+<body>
+<div class="calculator">
+  <div class="display">
+    <div class="mode-indicator">
+      <span id="angleMode" class="active">DEG</span>
+      <span id="memIndicator" style="display:none;">M</span>
+    </div>
+    <div class="history-display" id="historyDisplay"></div>
+    <div class="input-display" id="inputDisplay">0</div>
+    <div class="result-display" id="resultDisplay"></div>
+  </div>
+  <div class="buttons">
+    <button class="btn-func" onclick="toggleAngleMode()" title="角度/弧度切換">D/R</button>
+    <button class="btn-memory" onclick="mc()">MC</button>
+    <button class="btn-memory" onclick="mr()">MR</button>
+    <button class="btn-memory" onclick="mPlus()">M+</button>
+    <button class="btn-memory" onclick="mMinus()">M-</button>
+
+    <button class="btn-func" onclick="insertFunc('sin(')">sin</button>
+    <button class="btn-func" onclick="insertFunc('cos(')">cos</button>
+    <button class="btn-func" onclick="insertFunc('tan(')">tan</button>
+    <button class="btn-op" onclick="backspace()">⌫</button>
+    <button class="btn-clear" onclick="clearAll()">AC</button>
+
+    <button class="btn-func" onclick="insertFunc('log(')">log</button>
+    <button class="btn-func" onclick="insertFunc('ln(')">ln</button>
+    <button class="btn-func" onclick="insertFunc('sqrt(')">√</button>
+    <button class="btn-func" onclick="openParen()">(</button>
+    <button class="btn-func" onclick="closeParen()">)</button>
+
+    <button class="btn-func" onclick="insertFunc('asin(')">sin⁻¹</button>
+    <button class="btn-func" onclick="insertFunc('acos(')">cos⁻¹</button>
+    <button class="btn-func" onclick="insertFunc('atan(')">tan⁻¹</button>
+    <button class="btn-num" onclick="append('7')">7</button>
+    <button class="btn-num" onclick="append('8')">8</button>
+
+    <button class="btn-func" onclick="insertFunc('x^y(')">xʸ</button>
+    <button class="btn-func" onclick="insertFunc('abs(')">|x|</button>
+    <button class="btn-func" onclick="insertFunc('round(')">round</button>
+    <button class="btn-num" onclick="append('9')">9</button>
+    <button class="btn-op" onclick="append('÷')">÷</button>
+
+    <button class="btn-func" onclick="insertPi()">π</button>
+    <button class="btn-func" onclick="insertE()">e</button>
+    <button class="btn-func" onclick="factorial()">x!</button>
+    <button class="btn-num" onclick="append('4')">4</button>
+    <button class="btn-num" onclick="append('5')">5</button>
+
+    <button class="btn-func" onclick="append('EE')" title="科學記號">EE</button>
+    <button class="btn-func" onclick="insertFunc('pow10(')">10ˣ</button>
+    <button class="btn-func" onclick="insertFunc('exp(')">eˣ</button>
+    <button class="btn-num" onclick="append('6')">6</button>
+    <button class="btn-op" onclick="append('×')">×</button>
+
+    <button class="btn-func" onclick="toggleSign()">±</button>
+    <button class="btn-func" onclick="append('^')">x²</button>
+    <button class="btn-func" onclick="append('^(1/')">ˣ√</button>
+    <button class="btn-num" onclick="append('1')">1</button>
+    <button class="btn-num" onclick="append('2')">2</button>
+
+    <button class="btn-func" onclick="append('%')">%</button>
+    <button class="btn-func" onclick="append('1/')">1/x</button>
+    <button class="btn-clear" onclick="clearEntry()">CE</button>
+    <button class="btn-num" onclick="append('3')">3</button>
+    <button class="btn-op" onclick="append('-')">−</button>
+
+    <button class="btn-memory btn-2col" onclick="showHistory()">History</button>
+    <button class="btn-num" onclick="append('0')">0</button>
+    <button class="btn-num" onclick="append('.')">.</button>
+    <button class="btn-op" onclick="append('+')">+</button>
+
+    <button class="btn-eq btn-3col" onclick="calculate()">=</button>
+  </div>
+</div>
+<script>
+let input = ''; let memory = 0; let hasMemory = false;
+let history = []; let angleMode = 'DEG'; let justCalculated = false;
+const inputDisplay = document.getElementById('inputDisplay');
+const resultDisplay = document.getElementById('resultDisplay');
+const historyDisplay = document.getElementById('historyDisplay');
+
+function append(val) {
+  if (justCalculated && !isNaN(val) && val !== '.') { clearAll(); }
+  justCalculated = false;
+  if (val === 'EE') { input += 'E'; } else { input += val; }
+  updateDisplay();
+}
+
+function insertFunc(fn) {
+  if (justCalculated) { clearAll(); justCalculated = false; }
+  input += fn; updateDisplay();
+}
+
+function openParen() { input += '('; updateDisplay(); }
+function closeParen() { input += ')'; updateDisplay(); }
+function insertPi() { input += Math.PI.toFixed(10); updateDisplay(); }
+function insertE() { input += Math.E.toFixed(10); updateDisplay(); }
+
+function toggleSign() {
+  if (!input) return;
+  if (input.startsWith('-')) input = input.slice(1);
+  else input = '-' + input;
+  updateDisplay();
+}
+
+function backspace() {
+  if (justCalculated) { clearAll(); return; }
+  input = input.slice(0, -1);
+  if (!input) input = '0';
+  updateDisplay();
+}
+
+function clearAll() {
+  input = '0'; resultDisplay.textContent = ''; justCalculated = false; updateDisplay();
+}
+
+function clearEntry() {
+  input = '0'; justCalculated = false; updateDisplay();
+}
+
+function toggleAngleMode() {
+  angleMode = angleMode === 'DEG' ? 'RAD' : 'DEG';
+  document.getElementById('angleMode').textContent = angleMode;
+}
+
+function toRad(deg) { return deg * Math.PI / 180; }
+function toDeg(rad) { return rad * 180 / Math.PI; }
+
+function factorialize(n) {
+  if (n < 0) return NaN;
+  if (n === 0 || n === 1) return 1;
+  let r = 1;
+  for (let i = 2; i <= Math.floor(n); i++) r *= i;
+  return r;
+}
+
+function safeEval(expr) {
+  let sanitized = expr
+    .replace(/sin\(/gi, 'SIN(').replace(/cos\(/gi, 'COS(').replace(/tan\(/gi, 'TAN(')
+    .replace(/asin\(/gi, 'ASIN(').replace(/acos\(/gi, 'ACOS(').replace(/atan\(/gi, 'ATAN(')
+    .replace(/log\(/gi, 'LOG(').replace(/ln\(/gi, 'LN(').replace(/sqrt\(/gi, 'SQRT(')
+    .replace(/abs\(/gi, 'ABS(').replace(/round\(/gi, 'ROUND(').replace(/exp\(/gi, 'EXP(')
+    .replace(/pow10\(/gi, 'POW10(')
+    .replace(/x\^y\(/gi, 'POW(')
+    .replace(/÷/g, '/').replace(/×/g, '*').replace(/−/g, '-')
+    .replace(/\^\(1\//g, 'ROOT(')
+    .replace(/\^/g, '**')
+    .replace(/1\//g, '(1/')
+    .replace(/E/g, '*10**');
+
+  const funcs = {
+    SIN: x => Math.sin(angleMode === 'DEG' ? toRad(x) : x),
+    COS: x => Math.cos(angleMode === 'DEG' ? toRad(x) : x),
+    TAN: x => Math.tan(angleMode === 'DEG' ? toRad(x) : x),
+    ASIN: x => { const r = Math.asin(x); return angleMode === 'DEG' ? toDeg(r) : r; },
+    ACOS: x => { const r = Math.acos(x); return angleMode === 'DEG' ? toDeg(r) : r; },
+    ATAN: x => { const r = Math.atan(x); return angleMode === 'DEG' ? toDeg(r) : r; },
+    LOG: x => Math.log10(x),
+    LN: x => Math.log(x),
+    SQRT: x => Math.sqrt(x),
+    ABS: x => Math.abs(x),
+    ROUND: x => Math.round(x),
+    EXP: x => Math.exp(x),
+    POW10: x => Math.pow(10, x),
+    POW: (x, y) => Math.pow(x, y),
+    ROOT: (x, y) => Math.pow(x, 1/y),
+  };
+
+  let result = '';
+  const body = `"use strict"; const F=${JSON.stringify(funcs)}; result=${sanitized}`;
+
+  try {
+    const f = new Function('F', body);
+    result = f(funcs);
+    if (typeof result === 'number' && !isFinite(result)) return '∞';
+    if (typeof result === 'number' && isNaN(result)) return '錯誤';
+    if (typeof result === 'number') return result;
+    return expr;
+  } catch(e) { return '錯誤'; }
+}
+
+function calculate() {
+  if (!input || input === '0') return;
+  const result = safeEval(input);
+  if (typeof result === 'number') {
+    const displayVal = Number.isInteger(result) ? result.toString() : parseFloat(result.toFixed(10)).toString();
+    history.unshift(input + ' = ' + displayVal);
+    if (history.length > 50) history.pop();
+    resultDisplay.textContent = '= ' + displayVal;
+    input = displayVal;
+    justCalculated = true;
+  } else {
+    resultDisplay.textContent = '= ' + result;
+    justCalculated = true;
+  }
+  updateDisplay();
+}
+
+function factorial() {
+  if (!input || input === '0') return;
+  const val = parseFloat(input);
+  if (isNaN(val)) return;
+  const result = factorialize(val);
+  history.unshift(input + '! = ' + result);
+  if (history.length > 50) history.pop();
+  resultDisplay.textContent = '= ' + result;
+  input = result.toString();
+  justCalculated = true;
+  updateDisplay();
+}
+
+function mc() { memory = 0; hasMemory = false; document.getElementById('memIndicator').style.display = 'none'; }
+function mr() { input = memory.toString(); justCalculated = false; updateDisplay(); }
+function mPlus() { memory += parseFloat(input) || 0; hasMemory = true; document.getElementById('memIndicator').style.display = 'inline'; }
+function mMinus() { memory -= parseFloat(input) || 0; hasMemory = true; document.getElementById('memIndicator').style.display = 'inline'; }
+
+function showHistory() {
+  if (history.length === 0) { resultDisplay.textContent = '= 暫無歷史記錄'; return; }
+  resultDisplay.textContent = '= 歷史: ' + history.slice(0, 5).join(' | ');
+}
+
+function updateDisplay() {
+  inputDisplay.textContent = input || '0';
+  if (!justCalculated && resultDisplay.textContent.startsWith('= ')) {
+    resultDisplay.textContent = '';
+  }
+}
+
+document.addEventListener('keydown', (e) => {
+  const key = e.key;
+  if (key >= '0' && key <= '9') { append(key); }
+  else if (key === '.') { append('.'); }
+  else if (key === '+') { append('+'); }
+  else if (key === '-') { append('−'); }
+  else if (key === '*') { append('×'); }
+  else if (key === '/') { append('÷'); }
+  else if (key === 'Enter' || key === '=') { e.preventDefault(); calculate(); }
+  else if (key === 'Backspace') { e.preventDefault(); backspace(); }
+  else if (key === 'Escape') { clearAll(); }
+  else if (key === '(') { openParen(); }
+  else if (key === ')') { closeParen(); }
+  else if (key === '%') { append('%'); }
+});
+
+updateDisplay();
+</script>
+</body>
+</html>
