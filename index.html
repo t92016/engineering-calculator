@@ -195,7 +195,8 @@ button:active { transform: scale(0.92); }
 </div>
 
 <script>
-let input = '';
+let input = '0';
+let expression = '';
 let memory = 0;
 let hasMemory = false;
 let calcHistory = [];
@@ -206,21 +207,30 @@ const inputDisplay = document.getElementById('inputDisplay');
 const resultDisplay = document.getElementById('resultDisplay');
 
 function append(val) {
-  if (justCalculated && !isNaN(val) && val !== '.') { clearAll(); }
-  justCalculated = false;
+  if (justCalculated) {
+    if (!isNaN(val) && val !== '.') {
+      input = '0';
+      expression = '';
+      resultDisplay.textContent = '';
+    }
+    justCalculated = false;
+  }
   if (val === 'EE') { input += 'E'; }
+  else if (input === '0' && val !== '.') { input = val; }
   else { input += val; }
   updateDisplay();
 }
 
 function insertFunc(fn) {
-  if (justCalculated) { input = ''; justCalculated = false; }
+  if (justCalculated) { input = ''; expression = ''; resultDisplay.textContent = ''; justCalculated = false; }
+  if (input === '0') input = '';
   input += fn;
   updateDisplay();
 }
 
 function insertConst(name) {
-  if (justCalculated) { input = ''; justCalculated = false; }
+  if (justCalculated) { input = ''; expression = ''; resultDisplay.textContent = ''; justCalculated = false; }
+  if (input === '0') input = '';
   if (name === 'pi') input += Math.PI.toString();
   else if (name === 'e') input += Math.E.toString();
   updateDisplay();
@@ -481,24 +491,25 @@ function safeEval(expr) {
 // --- CALCULATE ---
 function calculate() {
   if (!input || input === '0') return;
-  const result = safeEval(input);
+  expression = input;
+  const result = safeEval(expression);
   if (typeof result === 'number' && !isFinite(result)) {
     resultDisplay.textContent = '= ' + (result > 0 ? '∞' : '-∞');
-    input = result > 0 ? 'Infinity' : '-Infinity';
+    input = expression;
   } else if (typeof result === 'number' && isNaN(result)) {
     resultDisplay.textContent = '= 錯誤';
-    input = '0';
+    input = expression;
   } else if (typeof result === 'number') {
     const displayVal = Number.isInteger(result) && Math.abs(result) < 1e15
       ? result.toString()
       : parseFloat(result.toPrecision(12)).toString();
-    calcHistory.unshift(input + ' = ' + displayVal);
+    calcHistory.unshift(expression + ' = ' + displayVal);
     if (calcHistory.length > 50) calcHistory.pop();
     resultDisplay.textContent = '= ' + displayVal;
-    input = displayVal;
+    input = expression;
   } else {
     resultDisplay.textContent = '= 錯誤';
-    input = '0';
+    input = expression;
   }
   justCalculated = true;
   updateDisplay();
@@ -508,12 +519,13 @@ function factorial() {
   if (!input || input === '0') return;
   const val = parseFloat(input);
   if (isNaN(val)) return;
+  expression = input + '!';
   const result = factorialize(val);
   const displayVal = isNaN(result) ? '錯誤' : result.toString();
-  calcHistory.unshift(input + '! = ' + displayVal);
+  calcHistory.unshift(expression + ' = ' + displayVal);
   if (calcHistory.length > 50) calcHistory.pop();
   resultDisplay.textContent = '= ' + displayVal;
-  input = displayVal;
+  input = expression;
   justCalculated = true;
   updateDisplay();
 }
