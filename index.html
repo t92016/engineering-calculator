@@ -117,11 +117,6 @@ button:active { transform: scale(0.92); }
 .btn-memory:hover { background: #3a5070; }
 .btn-2col { grid-column: span 2; }
 .btn-3col { grid-column: span 3; }
-.angle-badge {
-  font-size: 11px;
-  color: #00d2ff;
-  margin-left: 5px;
-}
 </style>
 </head>
 <body>
@@ -160,32 +155,32 @@ button:active { transform: scale(0.92); }
     <button class="btn-num" onclick="append('7')">7</button>
     <button class="btn-num" onclick="append('8')">8</button>
 
-    <button class="btn-func" onclick="insertFunc('x^y(')">xʸ</button>
+    <button class="btn-func" onclick="insertFunc('pow(')">xʸ</button>
     <button class="btn-func" onclick="insertFunc('abs(')">|x|</button>
     <button class="btn-func" onclick="insertFunc('round(')">round</button>
     <button class="btn-num" onclick="append('9')">9</button>
     <button class="btn-op" onclick="append('÷')">÷</button>
 
-    <button class="btn-func" onclick="insertPi()">π</button>
-    <button class="btn-func" onclick="insertE()">e</button>
+    <button class="btn-func" onclick="insertConst('pi')">π</button>
+    <button class="btn-func" onclick="insertConst('e')">e</button>
     <button class="btn-func" onclick="factorial()">x!</button>
     <button class="btn-num" onclick="append('4')">4</button>
     <button class="btn-num" onclick="append('5')">5</button>
 
-    <button class="btn-func" onclick="append('EE')" title="科學記號">EE</button>
+    <button class="btn-func" onclick="append('EE')">EE</button>
     <button class="btn-func" onclick="insertFunc('pow10(')">10ˣ</button>
     <button class="btn-func" onclick="insertFunc('exp(')">eˣ</button>
     <button class="btn-num" onclick="append('6')">6</button>
     <button class="btn-op" onclick="append('×')">×</button>
 
     <button class="btn-func" onclick="toggleSign()">±</button>
-    <button class="btn-func" onclick="append('^')">x²</button>
-    <button class="btn-func" onclick="append('^(1/')">ˣ√</button>
+    <button class="btn-func" onclick="append('²')">x²</button>
+    <button class="btn-func" onclick="insertFunc('cbrt(')">³√</button>
     <button class="btn-num" onclick="append('1')">1</button>
     <button class="btn-num" onclick="append('2')">2</button>
 
     <button class="btn-func" onclick="append('%')">%</button>
-    <button class="btn-func" onclick="append('1/')">1/x</button>
+    <button class="btn-func" onclick="insertFunc('inv(')">1/x</button>
     <button class="btn-clear" onclick="clearEntry()">CE</button>
     <button class="btn-num" onclick="append('3')">3</button>
     <button class="btn-op" onclick="append('-')">−</button>
@@ -198,29 +193,41 @@ button:active { transform: scale(0.92); }
     <button class="btn-eq btn-3col" onclick="calculate()">=</button>
   </div>
 </div>
+
 <script>
-let input = ''; let memory = 0; let hasMemory = false;
-let history = []; let angleMode = 'DEG'; let justCalculated = false;
+let input = '';
+let memory = 0;
+let hasMemory = false;
+let calcHistory = [];
+let angleMode = 'DEG';
+let justCalculated = false;
+
 const inputDisplay = document.getElementById('inputDisplay');
 const resultDisplay = document.getElementById('resultDisplay');
-const historyDisplay = document.getElementById('historyDisplay');
 
 function append(val) {
   if (justCalculated && !isNaN(val) && val !== '.') { clearAll(); }
   justCalculated = false;
-  if (val === 'EE') { input += 'E'; } else { input += val; }
+  if (val === 'EE') { input += 'E'; }
+  else { input += val; }
   updateDisplay();
 }
 
 function insertFunc(fn) {
-  if (justCalculated) { clearAll(); justCalculated = false; }
-  input += fn; updateDisplay();
+  if (justCalculated) { input = ''; justCalculated = false; }
+  input += fn;
+  updateDisplay();
+}
+
+function insertConst(name) {
+  if (justCalculated) { input = ''; justCalculated = false; }
+  if (name === 'pi') input += Math.PI.toString();
+  else if (name === 'e') input += Math.E.toString();
+  updateDisplay();
 }
 
 function openParen() { input += '('; updateDisplay(); }
 function closeParen() { input += ')'; updateDisplay(); }
-function insertPi() { input += Math.PI.toFixed(10); updateDisplay(); }
-function insertE() { input += Math.E.toFixed(10); updateDisplay(); }
 
 function toggleSign() {
   if (!input) return;
@@ -237,11 +244,16 @@ function backspace() {
 }
 
 function clearAll() {
-  input = '0'; resultDisplay.textContent = ''; justCalculated = false; updateDisplay();
+  input = '0';
+  resultDisplay.textContent = '';
+  justCalculated = false;
+  updateDisplay();
 }
 
 function clearEntry() {
-  input = '0'; justCalculated = false; updateDisplay();
+  input = '0';
+  justCalculated = false;
+  updateDisplay();
 }
 
 function toggleAngleMode() {
@@ -249,76 +261,246 @@ function toggleAngleMode() {
   document.getElementById('angleMode').textContent = angleMode;
 }
 
-function toRad(deg) { return deg * Math.PI / 180; }
-function toDeg(rad) { return rad * 180 / Math.PI; }
+function toRad(x) { return angleMode === 'DEG' ? x * Math.PI / 180 : x; }
+function toDeg(x) { return angleMode === 'DEG' ? x * 180 / Math.PI : x; }
+
+// --- TOKENIZER ---
+function tokenize(expr) {
+  const tokens = [];
+  let i = 0;
+  while (i < expr.length) {
+    if (expr[i] === ' ') { i++; continue; }
+
+    // Numbers (including decimals and scientific notation with E)
+    if ((expr[i] >= '0' && expr[i] <= '9') || (expr[i] === '.' && i + 1 < expr.length && expr[i+1] >= '0' && expr[i+1] <= '9')) {
+      let num = '';
+      while (i < expr.length && ((expr[i] >= '0' && expr[i] <= '9') || expr[i] === '.')) {
+        num += expr[i]; i++;
+      }
+      // Check for scientific notation E
+      if (i < expr.length && expr[i] === 'E') {
+        num += 'E'; i++;
+        if (i < expr.length && (expr[i] === '+' || expr[i] === '-')) { num += expr[i]; i++; }
+        while (i < expr.length && expr[i] >= '0' && expr[i] <= '9') { num += expr[i]; i++; }
+      }
+      tokens.push({ type: 'num', value: parseFloat(num) });
+      continue;
+    }
+
+    // Named functions and constants
+    const rest = expr.slice(i);
+    const funcs = ['asin','acos','atan','sin','cos','tan','sqrt','cbrt','log','ln','abs','round','exp','pow10','pow','inv'];
+    let matched = false;
+    for (const fn of funcs) {
+      if (rest.startsWith(fn + '(') || rest === fn) {
+        if (fn === 'pi') {
+          tokens.push({ type: 'num', value: Math.PI }); i += 2; matched = true; break;
+        }
+        if (fn === 'e' && (i + 1 >= expr.length || expr[i+1] !== '(')) {
+          tokens.push({ type: 'num', value: Math.E }); i += 1; matched = true; break;
+        }
+        tokens.push({ type: 'func', value: fn });
+        i += fn.length;
+        matched = true;
+        break;
+      }
+    }
+    if (matched) continue;
+
+    // Constants by name
+    if (rest.startsWith('pi')) { tokens.push({ type: 'num', value: Math.PI }); i += 2; continue; }
+
+    // Operators and parens
+    const ch = expr[i];
+    if (ch === '(' || ch === ')') { tokens.push({ type: ch }); i++; continue; }
+    if (ch === '+') { tokens.push({ type: 'op', value: '+', prec: 1 }); i++; continue; }
+    if (ch === '-' || ch === '−') { tokens.push({ type: 'op', value: '-', prec: 1 }); i++; continue; }
+    if (ch === '×' || ch === '*') { tokens.push({ type: 'op', value: '*', prec: 2 }); i++; continue; }
+    if (ch === '÷' || ch === '/') { tokens.push({ type: 'op', value: '/', prec: 2 }); i++; continue; }
+    if (ch === '%') { tokens.push({ type: 'op', value: '%', prec: 3 }); i++; continue; }
+    if (ch === '^') { tokens.push({ type: 'op', value: '^', prec: 4 }); i++; continue; }
+    if (ch === '!') { tokens.push({ type: 'postfix', value: '!' }); i++; continue; }
+    if (ch === '²') { tokens.push({ type: 'postfix', value: '²' }); i++; continue; }
+
+    // Unknown character - skip
+    i++;
+  }
+  return tokens;
+}
+
+// --- PARSER (recursive descent, handles operator precedence) ---
+let parseTokens = [];
+let parsePos = 0;
+
+function peekToken() { return parsePos < parseTokens.length ? parseTokens[parsePos] : null; }
+function nextToken() { return parseTokens[parsePos++]; }
+
+function parseExpr() { return parseAddSub(); }
+
+function parseAddSub() {
+  let left = parseMulDiv();
+  while (peekToken() && peekToken().type === 'op' && (peekToken().value === '+' || peekToken().value === '-')) {
+    const op = nextToken().value;
+    const right = parseMulDiv();
+    left = op === '+' ? left + right : left - right;
+  }
+  return left;
+}
+
+function parseMulDiv() {
+  let left = parsePercent();
+  while (peekToken() && peekToken().type === 'op' && (peekToken().value === '*' || peekToken().value === '/')) {
+    const op = nextToken().value;
+    const right = parsePercent();
+    left = op === '*' ? left * right : left / right;
+  }
+  return left;
+}
+
+function parsePercent() {
+  let left = parsePower();
+  while (peekToken() && peekToken().type === 'op' && peekToken().value === '%') {
+    nextToken();
+    left = left / 100;
+  }
+  return left;
+}
+
+function parsePower() {
+  let left = parseUnary();
+  while (peekToken() && peekToken().type === 'op' && peekToken().value === '^') {
+    nextToken();
+    const right = parseUnary();
+    left = Math.pow(left, right);
+  }
+  return left;
+}
+
+function parseUnary() {
+  if (peekToken() && peekToken().type === 'op' && peekToken().value === '-') {
+    nextToken();
+    return -parsePostfix();
+  }
+  if (peekToken() && peekToken().type === 'op' && peekToken().value === '+') {
+    nextToken();
+  }
+  return parsePostfix();
+}
+
+function parsePostfix() {
+  let val = parsePrimary();
+  while (peekToken() && peekToken().type === 'postfix') {
+    const op = nextToken().value;
+    if (op === '!') val = factorialize(val);
+    else if (op === '²') val = val * val;
+  }
+  return val;
+}
+
+function parsePrimary() {
+  const tok = peekToken();
+  if (!tok) return 0;
+
+  if (tok.type === 'num') {
+    nextToken();
+    return tok.value;
+  }
+
+  if (tok.type === '(') {
+    nextToken(); // consume (
+    const val = parseExpr();
+    if (peekToken() && peekToken().type === ')') nextToken(); // consume )
+    return val;
+  }
+
+  if (tok.type === 'func') {
+    const fn = tok.value;
+    nextToken();
+    // Expect ( after function name
+    if (peekToken() && peekToken().type === '(') nextToken(); // consume (
+    const arg = parseExpr();
+    if (peekToken() && peekToken().type === ')') nextToken(); // consume )
+    return callFunc(fn, arg);
+  }
+
+  // Unknown token - skip
+  nextToken();
+  return 0;
+}
+
+function callFunc(name, x) {
+  switch (name) {
+    case 'sin': return Math.sin(toRad(x));
+    case 'cos': return Math.cos(toRad(x));
+    case 'tan': return Math.tan(toRad(x));
+    case 'asin': return toDeg(Math.asin(x));
+    case 'acos': return toDeg(Math.acos(x));
+    case 'atan': return toDeg(Math.atan(x));
+    case 'log': return Math.log10(x);
+    case 'ln': return Math.log(x);
+    case 'sqrt': return Math.sqrt(x);
+    case 'cbrt': return Math.cbrt(x);
+    case 'abs': return Math.abs(x);
+    case 'round': return Math.round(x);
+    case 'exp': return Math.exp(x);
+    case 'pow10': return Math.pow(10, x);
+    case 'inv': return 1 / x;
+    case 'pow': return x; // pow needs 2 args, handled specially
+    default: return x;
+  }
+}
 
 function factorialize(n) {
   if (n < 0) return NaN;
   if (n === 0 || n === 1) return 1;
+  if (n > 170) return Infinity;
   let r = 1;
   for (let i = 2; i <= Math.floor(n); i++) r *= i;
   return r;
 }
 
+// --- MAIN EVALUATOR ---
 function safeEval(expr) {
-  let sanitized = expr
-    .replace(/sin\(/gi, 'SIN(').replace(/cos\(/gi, 'COS(').replace(/tan\(/gi, 'TAN(')
-    .replace(/asin\(/gi, 'ASIN(').replace(/acos\(/gi, 'ACOS(').replace(/atan\(/gi, 'ATAN(')
-    .replace(/log\(/gi, 'LOG(').replace(/ln\(/gi, 'LN(').replace(/sqrt\(/gi, 'SQRT(')
-    .replace(/abs\(/gi, 'ABS(').replace(/round\(/gi, 'ROUND(').replace(/exp\(/gi, 'EXP(')
-    .replace(/pow10\(/gi, 'POW10(')
-    .replace(/x\^y\(/gi, 'POW(')
-    .replace(/÷/g, '/').replace(/×/g, '*').replace(/−/g, '-')
-    .replace(/\^\(1\//g, 'ROOT(')
-    .replace(/\^/g, '**')
-    .replace(/1\//g, '(1/')
-    .replace(/E/g, '*10**');
-
-  const funcs = {
-    SIN: x => Math.sin(angleMode === 'DEG' ? toRad(x) : x),
-    COS: x => Math.cos(angleMode === 'DEG' ? toRad(x) : x),
-    TAN: x => Math.tan(angleMode === 'DEG' ? toRad(x) : x),
-    ASIN: x => { const r = Math.asin(x); return angleMode === 'DEG' ? toDeg(r) : r; },
-    ACOS: x => { const r = Math.acos(x); return angleMode === 'DEG' ? toDeg(r) : r; },
-    ATAN: x => { const r = Math.atan(x); return angleMode === 'DEG' ? toDeg(r) : r; },
-    LOG: x => Math.log10(x),
-    LN: x => Math.log(x),
-    SQRT: x => Math.sqrt(x),
-    ABS: x => Math.abs(x),
-    ROUND: x => Math.round(x),
-    EXP: x => Math.exp(x),
-    POW10: x => Math.pow(10, x),
-    POW: (x, y) => Math.pow(x, y),
-    ROOT: (x, y) => Math.pow(x, 1/y),
-  };
-
-  let result = '';
-  const body = `"use strict"; const F=${JSON.stringify(funcs)}; result=${sanitized}`;
-
   try {
-    const f = new Function('F', body);
-    result = f(funcs);
-    if (typeof result === 'number' && !isFinite(result)) return '∞';
-    if (typeof result === 'number' && isNaN(result)) return '錯誤';
-    if (typeof result === 'number') return result;
-    return expr;
-  } catch(e) { return '錯誤'; }
+    // Handle implicit multiplication: e.g., "2sin(" → "2*sin(", "3pi" → "3*pi", "2(" → "2*("
+    let e = expr.replace(/(\d)(pi|e|sin|cos|tan|asin|acos|atan|log|ln|sqrt|cbrt|abs|round|exp|pow10|pow|inv|\()/g, '$1*$2');
+    // Handle )( → )*(  and )2 → )*2 etc.
+    e = e.replace(/\)([\d]|pi|e|sin|cos|tan|asin|acos|atan|log|ln|sqrt|cbrt|abs|round|exp|pow10|pow|inv|\()/g, ')*$1');
+    // Handle )(  patterns
+    e = e.replace(/\)\(/g, ')*(');
+
+    parseTokens = tokenize(e);
+    parsePos = 0;
+    const result = parseExpr();
+    return result;
+  } catch (err) {
+    return '錯誤';
+  }
 }
 
+// --- CALCULATE ---
 function calculate() {
   if (!input || input === '0') return;
   const result = safeEval(input);
-  if (typeof result === 'number') {
-    const displayVal = Number.isInteger(result) ? result.toString() : parseFloat(result.toFixed(10)).toString();
-    history.unshift(input + ' = ' + displayVal);
-    if (history.length > 50) history.pop();
+  if (typeof result === 'number' && !isFinite(result)) {
+    resultDisplay.textContent = '= ' + (result > 0 ? '∞' : '-∞');
+    input = result > 0 ? 'Infinity' : '-Infinity';
+  } else if (typeof result === 'number' && isNaN(result)) {
+    resultDisplay.textContent = '= 錯誤';
+    input = '0';
+  } else if (typeof result === 'number') {
+    const displayVal = Number.isInteger(result) && Math.abs(result) < 1e15
+      ? result.toString()
+      : parseFloat(result.toPrecision(12)).toString();
+    calcHistory.unshift(input + ' = ' + displayVal);
+    if (calcHistory.length > 50) calcHistory.pop();
     resultDisplay.textContent = '= ' + displayVal;
     input = displayVal;
-    justCalculated = true;
   } else {
-    resultDisplay.textContent = '= ' + result;
-    justCalculated = true;
+    resultDisplay.textContent = '= 錯誤';
+    input = '0';
   }
+  justCalculated = true;
   updateDisplay();
 }
 
@@ -327,22 +509,24 @@ function factorial() {
   const val = parseFloat(input);
   if (isNaN(val)) return;
   const result = factorialize(val);
-  history.unshift(input + '! = ' + result);
-  if (history.length > 50) history.pop();
-  resultDisplay.textContent = '= ' + result;
-  input = result.toString();
+  const displayVal = isNaN(result) ? '錯誤' : result.toString();
+  calcHistory.unshift(input + '! = ' + displayVal);
+  if (calcHistory.length > 50) calcHistory.pop();
+  resultDisplay.textContent = '= ' + displayVal;
+  input = displayVal;
   justCalculated = true;
   updateDisplay();
 }
 
+// --- MEMORY ---
 function mc() { memory = 0; hasMemory = false; document.getElementById('memIndicator').style.display = 'none'; }
 function mr() { input = memory.toString(); justCalculated = false; updateDisplay(); }
 function mPlus() { memory += parseFloat(input) || 0; hasMemory = true; document.getElementById('memIndicator').style.display = 'inline'; }
 function mMinus() { memory -= parseFloat(input) || 0; hasMemory = true; document.getElementById('memIndicator').style.display = 'inline'; }
 
 function showHistory() {
-  if (history.length === 0) { resultDisplay.textContent = '= 暫無歷史記錄'; return; }
-  resultDisplay.textContent = '= 歷史: ' + history.slice(0, 5).join(' | ');
+  if (calcHistory.length === 0) { resultDisplay.textContent = '= 暫無歷史記錄'; return; }
+  resultDisplay.textContent = '= ' + calcHistory.slice(0, 3).join(' | ');
 }
 
 function updateDisplay() {
@@ -352,6 +536,7 @@ function updateDisplay() {
   }
 }
 
+// --- KEYBOARD ---
 document.addEventListener('keydown', (e) => {
   const key = e.key;
   if (key >= '0' && key <= '9') { append(key); }
